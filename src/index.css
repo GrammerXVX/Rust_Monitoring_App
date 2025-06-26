@@ -1,0 +1,50 @@
+/* PLEASE NOTE: THESE TAILWIND IMPORTS SHOULD NEVER BE DELETED */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+/* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL */
+:root {
+  --win-bg: #ffffff;
+  --win-bg-secondary: #fafafa;
+  --win-bg-hover: #f5f5f5;
+  --win-bg-active: #f0f0f0;
+  --win-text: #000000;
+  --win-text-secondary: #666666;
+  --win-border: #e5e5e5;
+  --win-border-focus: #0078d4;
+  --win-accent: #0078d4;
+  --win-header: #f0f0f0;
+  --win-control: #ffffff;
+  --win-control-hover: #f5f5f5;
+  --win-log-bg: #ffffff;
+}
+:root.dark {
+  --win-bg: #202020;
+  --win-bg-secondary: #2d2d2d;
+  --win-bg-hover: #353535;
+  --win-bg-active: #3d3d3d;
+  --win-text: #ffffff;
+  --win-text-secondary: #a0a0a0;
+  --win-border: #404040;
+  --win-border-focus: #0078d4;
+  --win-accent: #0078d4;
+  --win-header: #1f1f1f;
+  --win-control: #2d2d2d;
+  --win-control-hover: #353535;
+  --win-log-bg: #1f1f1f;
+}
+@layer base {
+  .bg-win-bg { background-color: var(--win-bg); }
+  .bg-win-bg-secondary { background-color: var(--win-bg-secondary); }
+  .bg-win-bg-hover { background-color: var(--win-bg-hover); }
+  .bg-win-bg-active { background-color: var(--win-bg-active); }
+  .bg-win-header { background-color: var(--win-header); }
+  .bg-win-control { background-color: var(--win-control); }
+  .bg-win-control-hover { background-color: var(--win-control-hover); }
+  .bg-win-log { background-color: var(--win-log-bg); }
+  .text-win-text { color: var(--win-text); }
+  .text-win-text-secondary { color: var(--win-text-secondary); }
+  .border-win-border { border-color: var(--win-border); }
+  .border-win-border-focus { border-color: var(--win-border-focus); }
+  .border-win-accent { border-color: var(--win-accent); }
+}
