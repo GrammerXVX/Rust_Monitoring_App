@@ -1,34 +1,13 @@
-use crate::models::{LocalProcessInfo, ProcessDetail, SystemInfo};
-use nvml_wrapper as nvml;
-use std::sync::Mutex;
-use sysinfo::{CpuExt,  PidExt, ProcessExt,  System, SystemExt};
-use systemstat::{Platform, System as Stats};
+use crate::{
+    models::system_info::{SystemInfo, ProcessDetail, LocalProcessInfo},
+    state::system::SystemMonitorState,
+    utils::log_parser::is_system_process,
+};
+use sysinfo::{CpuExt, PidExt, ProcessExt, SystemExt};
+use systemstat::Platform;
 use tauri::State;
-
-pub struct SystemMonitorState {
-    pub sys: Mutex<System>,
-    pub stats: Stats,
-    pub nvml: Option<nvml::Nvml>,
-}
-
-fn is_system_process(pid: u32, name: &str) -> bool {
-    if cfg!(target_os = "windows") {
-        pid < 100
-            || name == "System"
-            || name == "Registry"
-            || name.contains("svchost")
-            || name.contains("dllhost")
-    } else if cfg!(target_os = "linux") {
-        pid < 1000
-            || name == "systemd"
-            || name == "kthreadd"
-            || name == "ksoftirqd"
-            || name.contains("rcu")
-            || name == "migration"
-    } else {
-        false
-    }
-}
+use tokio::time;
+use nvml_wrapper::{self as nvml};
 
 #[tauri::command]
 pub async fn get_system_info(
@@ -39,7 +18,8 @@ pub async fn get_system_info(
         let mut sys = state.sys.lock().unwrap();
         sys.refresh_all();
     }
-    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+
+    time::sleep(time::Duration::from_millis(300)).await;
 
     let (cpu_usage, total_memory, used_memory, cpu_name, processes, selected_process_detail) = {
         let mut sys = state.sys.lock().unwrap();
@@ -61,21 +41,23 @@ pub async fn get_system_info(
                 continue;
             }
 
-            processes.push(LocalProcessInfo {
+            let process_info = LocalProcessInfo {
                 pid: pid_value,
                 name: name.clone(),
                 cpu_usage: process.cpu_usage(),
                 memory: process.memory(),
-            });
+            };
+
+            processes.push(process_info);
 
             if Some(pid_value) == selected_pid {
                 selected_process_detail = Some(ProcessDetail {
                     pid: pid_value,
                     name,
-                    cpu_usage: (process.cpu_usage() / (sys.cpus().len() as f32)),
+                    cpu_usage: process.cpu_usage() / (sys.cpus().len() as f32),
                     memory: process.memory(),
                     status: format!("{:?}", process.status()),
-                    exe_path: Some(process.exe().to_path_buf().to_string_lossy().to_string()),
+                    exe_path: Some(process.exe().to_string_lossy().to_string()),
                     command_line: Some(process.cmd().join(" ")),
                 });
             }
@@ -99,17 +81,31 @@ pub async fn get_system_info(
 
     let cpu_temp = state.stats.cpu_temp().ok();
 
-    let (gpu_name, gpu_temp, gpu_usage) = if let Some(nvml) = &state.nvml {
-        nvml.device_by_index(0)
-            .map(|device| (device.name().ok(), device.temperature(nvml::enum_wrappers::device::TemperatureSensor::Gpu).ok(), device.utilization_rates().map(|u| u.gpu).ok()))
-            .unwrap_or((None, None, None))
-    } else {
-        (None, None, None)
+    let (gpu_name, gpu_temp, gpu_usage) = match &state.nvml {
+        Some(nvml) => match nvml.device_by_index(0) {
+            Ok(device) => {
+                let name = device.name().ok();
+                let temp = device
+                    .temperature(nvml::enum_wrappers::device::TemperatureSensor::Gpu)
+                    .ok();
+                let usage = device.utilization_rates().map(|u| u.gpu).ok();
+                (name, temp, usage)
+            }
+            Err(_) => (None, None, None),
+        },
+        None => (None, None, None),
     };
 
     Ok(SystemInfo {
-        cpu_usage, total_memory, used_memory, cpu_temp, gpu_name, gpu_temp, gpu_usage, processes,
+        cpu_usage,
+        total_memory,
+        used_memory,
+        cpu_temp,
         cpu_name: Some(cpu_name),
+        gpu_name,
+        gpu_temp,
+        gpu_usage,
+        processes,
         selected_process: selected_process_detail,
     })
 }

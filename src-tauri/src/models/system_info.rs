@@ -32,16 +32,3 @@ pub struct LocalProcessInfo {
     pub cpu_usage: f32,
     pub memory: u64,
 }
-
-#[derive(Clone, Serialize)]
-pub struct LogEntry {
-    pub timestamp: String,
-    pub level: String,
-    pub message: String,
-}
-
-#[derive(Serialize, Clone)]
-pub struct LoadProgress {
-    pub current: usize,
-    pub total: usize,
-}
