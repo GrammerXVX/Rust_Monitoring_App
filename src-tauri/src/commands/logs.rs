@@ -25,18 +25,15 @@ pub fn start_file_loading(
     reload_all: bool,
     file_path: String,
 ) -> Result<(), String> {
-    // Ставим флаг что начали загрузку
     {
         let mut fl = loading_state.is_loading.lock().unwrap();
         *fl = true;
     }
 
-    // Подготавливаем общие данные
     let start_offset = {
         let mut mon = state.state.lock().unwrap();
 
         if reload_all || mon.current_file.as_deref() != Some(&file_path) {
-            // сброс оффсета если указан reload_all или новый файл
             mon.current_file = Some(file_path.clone());
             mon.current_offset = 0;
             0
@@ -59,7 +56,6 @@ pub fn start_file_loading(
     let loading_st = loading_state.inner().clone();
 
     std::thread::spawn(move || {
-        // Открываем и сразу ставим оффсет
         let file = match File::open(&file_path) {
             Ok(f) => f,
             Err(e) => {
@@ -113,12 +109,11 @@ pub fn start_file_loading(
             mon.current_offset = 0;
             mon.initial_hash = Some(latest_hash);
             mon.last_modified = Some(file_modified);
-            drop(mon); // Разлочим до чтения
+            drop(mon); 
 
             let _ = app.emit("file_truncated", ());
         }
 
-        // ⚠️ Сообщаем фронту, что нужно очистить старые строки
         if force_reload {
             let _ = app.emit("file_truncated", ());
         }
@@ -150,8 +145,6 @@ pub fn start_file_loading(
             *fl = false;
             return;
         }
-
-        // Определяем total_lines только на первой загрузке
         let total = if start_offset == 0 {
             count_lines(&file_path).unwrap_or(0)
         } else {
@@ -164,7 +157,6 @@ pub fn start_file_loading(
         let mut batch = Vec::new();
 
         loop {
-            // проверяем отмену
             if cancel_token.is_cancelled() {
                 let _ = app.emit("loading_cancelled", ());
                 let mut fl = loading_st.is_loading.lock().unwrap();
@@ -176,7 +168,7 @@ pub fn start_file_loading(
             if !reload_all {
                 let latest_hash = match hash_file_start(&file_path, 1024) {
                     Ok(h) => h,
-                    Err(_) => current_hash, // если ошибка, не сбрасываем
+                    Err(_) => current_hash, 
                 };
 
                 let mut mon = mon_state.lock().unwrap();
@@ -186,22 +178,19 @@ pub fn start_file_loading(
                     mon.current_offset = 0;
                     let _ = app.emit("file_truncated", ());
                     drop(mon);
-                    // Перезапуск всей загрузки — просто возвращаемся
                     let mut fl = loading_st.is_loading.lock().unwrap();
                     *fl = false;
                     return;
                 }
             }
             match reader.read_until(b'\n', &mut buf) {
-                Ok(0) => break, // EOF
+                Ok(0) => break, 
                 Ok(n) => {
                     count += 1;
-                    // обновляем offset
                     {
                         let mut mon = mon_state.lock().unwrap();
                         mon.current_offset += n as u64;
                     }
-                    // прогресс
                     if count % BATCH_SIZE == 0 || count == total {
                         let _ = app.emit(
                             "load_progress",
@@ -211,7 +200,6 @@ pub fn start_file_loading(
                             },
                         );
                     }
-                    // парсим
                     let (cow, _, err) = detect_encoding(&buf).decode(&buf);
                     if err {
                         log::warn!("Invalid chars");
@@ -239,7 +227,6 @@ pub fn start_file_loading(
                 }
             }
         }
-        // финальный batch
         if !batch.is_empty() {
             let _ = app.emit("new_logs_batch", batch);
         }
@@ -247,13 +234,11 @@ pub fn start_file_loading(
             log::info!("No new lines detected since last load");
             let _ = app.emit("loading_already_loaded", ());
         }
-        // успешно завершили
         let _ = app.emit("loading_success", ());
         let mut fl = loading_st.is_loading.lock().unwrap();
         *fl = false;
     });
 
-    // сразу возвращаемся во фронт, загрузка идёт в фоне
     Ok(())
 }
 #[tauri::command]
@@ -269,8 +254,6 @@ pub fn cancel_file_loading(loading_state: State<'_, Arc<LoadingState>>) {
         println!("[CANCEL] Token cancelled successfully");
     } else {
         println!("[CANCEL] No token found. Trying to cancel anyway");
-        // Попробуем создать новый токен и отменить его
-        // Это нужно для обработки крайних случаев
         let new_token = CancellationToken::new();
         new_token.cancel();
         *guard = Some(new_token);
@@ -284,7 +267,7 @@ pub fn set_current_file(path: String, state: State<'_, MonitoringState>) {
     let mut monitor = state.state.lock().unwrap();
     monitor.current_file = Some(path);
     monitor.current_offset = 0;
-    monitor.initial_hash = None;        // <--- добавь сброс!
+    monitor.initial_hash = None;     
     monitor.last_modified = None; 
 }
 #[tauri::command]
@@ -333,7 +316,6 @@ pub fn stop_file_monitoring(state: State<'_, MonitoringState>) {
     println!("[STOP] Stopping file monitoring");
     let mut monitor = state.state.lock().unwrap();
     monitor.is_running = false;
-    // Не сбрасываем current_file и current_offset!
 }
 #[tauri::command]
 pub fn get_current_file(state: State<'_, MonitoringState>) -> Option<String> {

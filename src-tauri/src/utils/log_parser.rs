@@ -87,7 +87,7 @@ pub fn extract_log_level(line: &str) -> (String, String) {
     ("INFO".to_string(), line.to_string())
 }
 pub fn count_lines(file_path: &str) -> std::io::Result<usize> {
-    let file = File::open(file_path)?; // Открываем новый файловый дескриптор
+    let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
     let mut count = 0;
     let mut buf = Vec::new();
@@ -96,9 +96,6 @@ pub fn count_lines(file_path: &str) -> std::io::Result<usize> {
         count += 1;
         buf.clear();
     }
-
-    // Нет необходимости возвращать курсор в начало,
-    // так как этот reader будет удален после завершения функции.
     Ok(count)
 }
 

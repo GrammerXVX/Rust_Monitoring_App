@@ -1,0 +1,1 @@
+flog.exe -w -f apache_error -t log -l -d 1s

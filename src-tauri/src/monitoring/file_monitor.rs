@@ -47,7 +47,6 @@ pub fn run_monitoring_loop(
     let mut first_cycle = true;
 
     loop {
-        // Проверка условий на продолжение
         {
             let monitor = state.lock().unwrap();
             if !monitor.is_running || monitor.current_file.as_ref() != Some(&file_path) {
@@ -67,7 +66,6 @@ pub fn run_monitoring_loop(
 
         let current_size = metadata.len();
 
-        // Обрезка файла
         if current_size < last_size {
             println!("[MONITOR] File truncated. Resetting offset.");
             if file.seek(SeekFrom::Start(0)).is_ok() {
@@ -80,7 +78,6 @@ pub fn run_monitoring_loop(
 
         last_size = current_size;
 
-        // Новые данные
         if offset < current_size {
             if !first_cycle {
                 if let Err(e) =
@@ -115,7 +112,7 @@ fn process_new_data(
         .map_err(|e| format!("Read failed: {}", e))?;
 
     if bytes_read == 0 {
-        return Ok(()); // ничего не прочитали
+        return Ok(()); 
     }
 
     *new_offset += bytes_read as u64;
