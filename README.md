@@ -107,6 +107,18 @@
 
 ---
 
+## 📦 Установить приложение
+
+## 🖥️ Скачать установщик (Windows)
+
+- [⬇️ Rust Monitoring App – Windows Setup (EXE)](https://github.com/GrammerXVX/Rust_Monitoring_App/releases/download/v0.6.2/setup.exe)
+- [⬇️ Rust Monitoring App – Windows Installer (MSI)](https://github.com/GrammerXVX/Rust_Monitoring_App/releases/download/v0.6.2/setup.msi)
+
+> Выберите нужный формат для установки на Windows.  
+> После загрузки просто запустите файл и следуйте инструкции.
+
+---
+
 ## 📚 Лицензия
 
 MIT License
