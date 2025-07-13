@@ -44,7 +44,7 @@ pub async fn get_system_info(
             let process_info = LocalProcessInfo {
                 pid: pid_value,
                 name: name.clone(),
-                cpu_usage: process.cpu_usage(),
+                cpu_usage: process.cpu_usage()/ (sys.cpus().len() as f32),
                 memory: process.memory(),
             };
 

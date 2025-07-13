@@ -2,14 +2,18 @@ use crate::{
     models::log_entry::LogEntry,
     monitoring::file_monitor::{get_file_size, run_monitoring_loop, MonitoringState},
     state::logs::*,
-    utils::{encoding::detect_encoding, hashing::hash_file_start, log_parser::{count_lines, extract_log_level}},
+    utils::{
+        encoding::detect_encoding,
+        hashing::hash_file_start,
+        log_parser::{count_lines, extract_log_level},
+    },
 };
 use chrono::Local;
 use std::{
     fs::File,
-    io::{BufRead, BufReader,Seek, SeekFrom},
+    io::{BufRead, BufReader, Seek, SeekFrom},
     path::Path,
-    sync::{Arc},
+    sync::Arc,
     thread,
     time::SystemTime,
 };
@@ -109,7 +113,7 @@ pub fn start_file_loading(
             mon.current_offset = 0;
             mon.initial_hash = Some(latest_hash);
             mon.last_modified = Some(file_modified);
-            drop(mon); 
+            drop(mon);
 
             let _ = app.emit("file_truncated", ());
         }
@@ -140,7 +144,14 @@ pub fn start_file_loading(
             return;
         }
         if file_size == 0 {
-            let _ = app.emit("loading_error", "File is empty or unreadable");
+            let _ = app.emit(
+                "load_progress",
+                LoadProgress {
+                    current: 0,
+                    total: 0,
+                },
+            );
+            let _ = app.emit("loading_success", ());
             let mut fl = loading_st.is_loading.lock().unwrap();
             *fl = false;
             return;
@@ -168,7 +179,7 @@ pub fn start_file_loading(
             if !reload_all {
                 let latest_hash = match hash_file_start(&file_path, 1024) {
                     Ok(h) => h,
-                    Err(_) => current_hash, 
+                    Err(_) => current_hash,
                 };
 
                 let mut mon = mon_state.lock().unwrap();
@@ -184,7 +195,7 @@ pub fn start_file_loading(
                 }
             }
             match reader.read_until(b'\n', &mut buf) {
-                Ok(0) => break, 
+                Ok(0) => break,
                 Ok(n) => {
                     count += 1;
                     {
@@ -267,8 +278,8 @@ pub fn set_current_file(path: String, state: State<'_, MonitoringState>) {
     let mut monitor = state.state.lock().unwrap();
     monitor.current_file = Some(path);
     monitor.current_offset = 0;
-    monitor.initial_hash = None;     
-    monitor.last_modified = None; 
+    monitor.initial_hash = None;
+    monitor.last_modified = None;
 }
 #[tauri::command]
 pub fn is_loading(loading_state: State<'_, Arc<LoadingState>>) -> bool {

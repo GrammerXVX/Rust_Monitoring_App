@@ -9,6 +9,8 @@ import { listen } from '@tauri-apps/api/event'
 import { LogEntry } from './types'
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from '@tauri-apps/api/window'
+import { AnimatePresence, motion } from 'framer-motion'
+
 
 function ThemeSelector() {
   const { theme, setTheme } = useTheme()
@@ -205,12 +207,7 @@ function AppContent() {
     const seenLogs = new Set<string>();
 
     const handleNewLogs = (event: { payload: LogEntry[] }) => {
-      const newLogs = (event.payload || []).filter((entry) => {
-        const key = `${entry.timestamp}-${entry.level}-${entry.message}`;
-        if (seenLogs.has(key)) return false;
-        seenLogs.add(key);
-        return true;
-      });
+      const newLogs = event.payload || [];
       if (newLogs.length > 0) {
         dispatch({ type: 'ADD_BATCH', payload: newLogs });
       }
@@ -239,7 +236,7 @@ function AppContent() {
 
       listen('loading_cancelled', async () => {
         console.log("❌ [Frontend] loading_cancelled — отключаю isLoading");
-        setIsLoading(false); // 🟢 ОБЯЗАТЕЛЬНО
+        setIsLoading(false);
         try {
           await invoke('stop_file_monitoring');
           setIsMonitoring(false);
@@ -255,7 +252,7 @@ function AppContent() {
       listen('loading_error', async (event) => {
         const errorMessage = event.payload as string;
         console.error("❗ [Frontend] loading_error:", errorMessage);
-        setIsLoading(false); // 🟢 ОБЯЗАТЕЛЬНО
+        setIsLoading(false);
         try {
           await invoke('stop_file_monitoring');
           setIsMonitoring(false);
@@ -418,6 +415,7 @@ function AppContent() {
               >
                 Cancel
               </button>
+
               <button
                 onClick={async () => {
                   if (pendingFilePath) {
@@ -492,20 +490,52 @@ function AppContent() {
               </button>
             </div>
           </div>
-          <div className="flex-1 min-h-[400px] overflow-auto">
-            {activeTab === 'realtime' ? (
-              <LogViewer
-                logs={logs}
-                isMonitoring={isMonitoring}
-                toggleMonitoring={toggleMonitoring}
-                clearLogs={clearLogs} // Передаем функцию
-              />
-            ) : activeTab === 'sorted' ? (
-              <SortedLogs logs={logs} />
-            ) : activeTab === 'system' ? (
-              <SystemMonitor />
-            ) : null}
+          <div className="flex-1 min-h-[400px] overflow-auto relative">
+            <AnimatePresence mode="wait" initial={false}>
+              {activeTab === 'realtime' && (
+                <motion.div
+                  key="realtime"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="absolute inset-0"
+                >
+                  <LogViewer
+                    logs={logs}
+                    isMonitoring={isMonitoring}
+                    toggleMonitoring={toggleMonitoring}
+                    clearLogs={clearLogs}
+                  />
+                </motion.div>
+              )}
+              {activeTab === 'sorted' && (
+                <motion.div
+                  key="sorted"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="absolute inset-0"
+                >
+                  <SortedLogs logs={logs} />
+                </motion.div>
+              )}
+              {activeTab === 'system' && (
+                <motion.div
+                  key="system"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="absolute inset-0"
+                >
+                  <SystemMonitor />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
         </div>
       </main>
     </div>

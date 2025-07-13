@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ProcessTableModal } from './ProcessTableModal';
+import { AnimatePresence, motion } from 'motion/react';
 interface SystemInfo {
     cpu_usage: number;
     total_memory: number;
@@ -33,10 +35,27 @@ interface ProcessDetail {
 }
 
 export function SystemMonitor() {
+    const [showProcessTable, setShowProcessTable] = useState(false);
+    const [processes, setProcesses] = useState<LocalProcessInfo[]>([]);
     const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-    const [selectedPid, setSelectedPid] = useState<number | null>(null); 
+    const [selectedPid, setSelectedPid] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+    useEffect(() => {
+        if (!systemInfo) return;
+        // Обновляем процессы по PID: если процесс уже есть — обновляем, если нет — добавляем
+        setProcesses(prev => {
+            // Создаём мапу старых процессов
+            const prevMap = new Map(prev.map(proc => [proc.pid, proc]));
+            // Обновляем или добавляем новые процессы
+            const next = systemInfo.processes.map(newProc => {
+                const old = prevMap.get(newProc.pid);
+                // Если такой процесс уже был — обновляем значения, иначе добавляем новый
+                return old ? { ...old, ...newProc } : newProc;
+            });
+            return next;
+        });
+    }, [systemInfo]);
     useEffect(() => {
         const updateSize = async () => {
             const win = getCurrentWindow();
@@ -76,6 +95,7 @@ export function SystemMonitor() {
         return () => clearInterval(interval);
     }, [selectedPid]);
     const selectedProcess = systemInfo?.selected_process;
+
     const formatMemory = (bytes: number): string => {
         const units = ['B', 'KB', 'MB', 'GB'];
         let value = bytes;
@@ -216,26 +236,32 @@ export function SystemMonitor() {
 
             {/* Выбор процесса */}
             <div className="mb-4">
-                <label className="block text-sm font-medium mb-1 text-win-text">
-                    Select Process:
-                </label>
-                <select
-                    className="w-full px-3 py-2 rounded border bg-win-control border-win-border"
-                    value={selectedPid || ''}
-                    onChange={(e) => {
-                        const pid = parseInt(e.target.value);
-                        setSelectedPid(pid || null); 
-                    }}
+                <button
+                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                    onClick={() => setShowProcessTable(v => !v)}
                 >
-                    <option value="">-- Select a process --</option>
-                    {systemInfo.processes.map(process => (
-                        <option key={process.pid} value={process.pid}>
-                            {process.name} (PID: {process.pid})
-                        </option>
-                    ))}
-                </select>
+                    {showProcessTable ? "Hide Processes" : "Show Processes"}
+                </button>
             </div>
-
+            <AnimatePresence>
+                {showProcessTable && (
+                    <motion.div
+                        key="proc-table"
+                        initial={{ opacity: 1, y: "-150%" }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 1, y: "-150%" }}
+                        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                        className="mt-4"
+                        
+                    >
+                        <ProcessTableModal
+                            processes={processes}
+                            visible={showProcessTable}
+                            onClose={() => setShowProcessTable(false)}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* Детали выбранного процесса */}
             {
                 selectedProcess && (
